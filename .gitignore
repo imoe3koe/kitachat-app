@@ -1,1 +1,4 @@
-echo -e "node_modules/\n.env\ndata/uploads/\n.DS_Store" > .gitignore
+node_modules/
+.env
+data/uploads/
+.DS_Store
