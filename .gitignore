@@ -1,0 +1,1 @@
+echo -e "node_modules/\n.env\ndata/uploads/\n.DS_Store" > .gitignore
