@@ -1,0 +1,1188 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <meta
+    name="viewport"
+    content="width=device-width, initial-scale=1.0, viewport-fit=cover"
+  >
+
+  <title>Kitachat - Hub Keluarga</title>
+
+  <meta
+    name="description"
+    content="Kitachat adalah hub keluarga untuk chat, album foto, agenda, dan panggilan suara."
+  >
+  <meta name="application-name" content="Kitachat">
+  <meta name="theme-color" content="#00a884">
+  <meta name="color-scheme" content="light dark">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-title" content="Kitachat">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="format-detection" content="telephone=no">
+
+  <link rel="manifest" href="/manifest.json">
+  <link rel="stylesheet" href="/style.css">
+
+  <link
+    rel="preconnect"
+    href="https://cdnjs.cloudflare.com"
+    crossorigin
+  >
+  <link
+    rel="stylesheet"
+    href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css"
+  >
+</head>
+
+<body class="light-mode">
+  <div id="app-container">
+
+    <!-- =========================
+         AUTHENTICATION
+    ========================== -->
+    <section
+      id="auth-screen"
+      class="screen active"
+      aria-labelledby="app-title"
+    >
+      <div class="auth-card">
+        <h1 id="app-title">
+          <i class="fa-solid fa-comments" aria-hidden="true"></i>
+          Kitachat
+        </h1>
+
+        <p>Hub Keluarga Tercinta</p>
+
+        <div class="tab-buttons" role="tablist" aria-label="Autentikasi">
+          <button
+            type="button"
+            id="tab-login"
+            class="active"
+            role="tab"
+            aria-selected="true"
+            aria-controls="login-form"
+            onclick="switchTab('login')"
+          >
+            Masuk
+          </button>
+
+          <button
+            type="button"
+            id="tab-register"
+            role="tab"
+            aria-selected="false"
+            aria-controls="register-form"
+            onclick="switchTab('register')"
+          >
+            Daftar
+          </button>
+        </div>
+
+        <form
+          id="login-form"
+          onsubmit="handleLogin(event)"
+          autocomplete="on"
+        >
+          <label class="sr-only" for="login-phone">Nomor telepon</label>
+          <input
+            type="tel"
+            id="login-phone"
+            name="phone"
+            inputmode="tel"
+            autocomplete="tel"
+            placeholder="Nomor Telepon"
+            required
+          >
+
+          <label class="sr-only" for="login-password">Password</label>
+          <input
+            type="password"
+            id="login-password"
+            name="password"
+            autocomplete="current-password"
+            placeholder="Password"
+            required
+          >
+
+          <button type="submit" class="btn-primary">
+            Masuk
+          </button>
+        </form>
+
+        <div
+          id="forgot-password-btn"
+          class="hidden"
+          style="margin-top: 15px; text-align: center;"
+        >
+          <p style="font-size: 13px; color: #e74c3c;">
+            Gagal login 3 kali. Lupa password?
+          </p>
+
+          <button
+            type="button"
+            onclick="requestOTP()"
+            style="background: none; border: none; color: var(--primary-color); font-weight: bold; cursor: pointer; font-size: 14px;"
+          >
+            <i class="fa-solid fa-key" aria-hidden="true"></i>
+            Reset Password
+          </button>
+        </div>
+
+        <form
+          id="register-form"
+          class="hidden"
+          onsubmit="handleRegister(event)"
+          autocomplete="on"
+        >
+          <div class="family-reg-options" style="margin-bottom: 15px; display: flex; gap: 10px; background: var(--bg-color, #f8f9fa); padding: 6px; border: 1px solid var(--border-color, #e2e8f0); border-radius: 10px;">
+            <label style="flex: 1; font-size: 13px; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 6px; font-weight: 600; padding: 10px; border-radius: 8px; transition: all 0.2s; color: var(--text-light, #1e293b);">
+              <input type="radio" name="register_type" value="create" checked onclick="toggleInviteCodeInput('create')" style="accent-color: var(--primary-color, #00a884);">
+              Buat Keluarga
+            </label>
+            <label style="flex: 1; font-size: 13px; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 6px; font-weight: 600; padding: 10px; border-radius: 8px; transition: all 0.2s; color: var(--text-light, #1e293b);">
+              <input type="radio" name="register_type" value="join" onclick="toggleInviteCodeInput('join')" style="accent-color: var(--primary-color, #00a884);">
+              Gabung Keluarga
+            </label>
+          </div>
+
+          <div id="invite-code-container" class="hidden" style="margin-bottom: 12px;">
+            <label class="sr-only" for="reg-invite-code">Kode Undangan Keluarga</label>
+            <input
+              type="text"
+              id="reg-invite-code"
+              name="invite_code"
+              placeholder="KODE UNDANGAN (Cth: KITA-XXXX)"
+              style="text-transform: uppercase; letter-spacing: 1px; font-weight: 600;"
+            >
+          </div>
+
+          <label class="sr-only" for="reg-name">Nama lengkap</label>
+          <input
+            type="text"
+            id="reg-name"
+            name="name"
+            autocomplete="name"
+            maxlength="100"
+            placeholder="Nama Lengkap"
+            required
+          >
+
+          <label class="sr-only" for="reg-phone">Nomor telepon</label>
+          <input
+            type="tel"
+            id="reg-phone"
+            name="phone"
+            inputmode="tel"
+            autocomplete="tel"
+            placeholder="Nomor Telepon"
+            required
+          >
+
+          <label class="sr-only" for="reg-password">Password</label>
+          <input
+            type="password"
+            id="reg-password"
+            name="password"
+            autocomplete="new-password"
+            minlength="8"
+            placeholder="Password minimal 8 karakter"
+            required
+          >
+
+          <label class="sr-only" for="reg-birthdate">Tanggal lahir</label>
+          <input
+            type="date"
+            id="reg-birthdate"
+            name="birthdate"
+            autocomplete="bday"
+          >
+
+          <button type="submit" class="btn-primary">
+            Daftar Sekarang
+          </button>
+        </form>
+
+        <p id="auth-message" role="status" aria-live="polite"></p>
+      </div>
+    </section>
+
+    <!-- =========================
+         MAIN APPLICATION
+    ========================== -->
+    <main id="main-screen" class="screen">
+      <header class="mobile-header-top">
+        <button
+          type="button"
+          class="user-profile"
+          onclick="switchTabNav('settings')"
+          title="Buka pengaturan"
+          aria-label="Buka pengaturan"
+        >
+          <img
+            id="user-avatar"
+            src="/logo-192.png"
+            alt="Foto profil"
+            width="35"
+            height="35"
+          >
+          <span id="user-display-name">Nama Pengguna</span>
+        </button>
+
+        <div class="sidebar-icons">
+          <button
+            type="button"
+            onclick="toggleTheme()"
+            title="Ganti tema"
+            aria-label="Ganti tema"
+          >
+            <i class="fa-solid fa-circle-half-stroke" aria-hidden="true"></i>
+          </button>
+
+          <button
+            type="button"
+            onclick="logout()"
+            title="Keluar"
+            aria-label="Keluar aplikasi"
+          >
+            <i class="fa-solid fa-right-from-bracket" aria-hidden="true"></i>
+          </button>
+        </div>
+      </header>
+
+      <aside class="sidebar desktop-sidebar">
+        <div class="sidebar-header">
+          <button
+            type="button"
+            class="user-profile"
+            onclick="switchTabNav('settings')"
+            title="Buka pengaturan"
+            aria-label="Buka pengaturan"
+          >
+            <img
+              id="user-avatar-desktop"
+              src="/logo-192.png"
+              alt="Foto profil"
+              width="40"
+              height="40"
+            >
+            <span id="user-display-name-desktop">
+              Nama Pengguna
+            </span>
+          </button>
+
+          <div class="sidebar-icons">
+            <button
+              type="button"
+              onclick="toggleTheme()"
+              title="Ganti tema"
+              aria-label="Ganti tema"
+            >
+              <i class="fa-solid fa-circle-half-stroke" aria-hidden="true"></i>
+            </button>
+
+            <button
+              type="button"
+              onclick="logout()"
+              title="Keluar"
+              aria-label="Keluar aplikasi"
+            >
+              <i class="fa-solid fa-right-from-bracket" aria-hidden="true"></i>
+            </button>
+          </div>
+        </div>
+
+        <nav class="sidebar-menu" aria-label="Navigasi utama">
+          <button
+            class="menu-item active"
+            data-tab="chat"
+            aria-selected="true"
+            onclick="switchTabNav('chat', this)"
+          >
+            <i class="fa-solid fa-message" aria-hidden="true"></i>
+            <span>Obrolan</span>
+          </button>
+
+          <button
+            class="menu-item"
+            data-tab="album"
+            aria-selected="false"
+            onclick="switchTabNav('album', this)"
+          >
+            <i class="fa-solid fa-images" aria-hidden="true"></i>
+            <span>Album</span>
+          </button>
+
+          <button
+            class="menu-item"
+            data-tab="agenda"
+            aria-selected="false"
+            onclick="switchTabNav('agenda', this)"
+          >
+            <i class="fa-solid fa-calendar-days" aria-hidden="true"></i>
+            <span>Agenda</span>
+          </button>
+
+          <button
+            class="menu-item"
+            data-tab="family"
+            aria-selected="false"
+            onclick="switchTabNav('family', this)"
+          >
+            <i class="fa-solid fa-users" aria-hidden="true"></i>
+            <span>Keluarga</span>
+          </button>
+
+          <button
+            class="menu-item"
+            data-tab="settings"
+            aria-selected="false"
+            onclick="switchTabNav('settings', this)"
+          >
+            <i class="fa-solid fa-gear" aria-hidden="true"></i>
+            <span>Pengaturan</span>
+          </button>
+        </nav>
+      </aside>
+
+      <section class="chat-area">
+        <section
+          id="content-chat"
+          class="tab-content active"
+          role="tabpanel"
+          aria-hidden="false"
+        >
+          <header class="chat-header">
+            <h2>
+              <i class="fa-solid fa-users-rectangle" aria-hidden="true"></i>
+              Kitachat Keluarga
+            </h2>
+            <div class="chat-header-actions">
+              <button type="button" onclick="openCallMenu()" title="Telepon Keluarga" style="background:transparent; border:none; color:var(--primary-color); font-size:1.2rem; cursor:pointer;">
+                <i class="fa-solid fa-phone" aria-hidden="true"></i>
+              </button>
+            </div>
+          </header>
+
+          <div
+            id="chat-messages-container"
+            class="chat-messages"
+            aria-live="polite"
+            aria-label="Daftar pesan"
+          ></div>
+
+          <div class="chat-input-area">
+            <div
+              id="reply-preview-container"
+              class="hidden"
+              aria-live="polite"
+            >
+              <div>
+                <strong id="reply-preview-sender">
+                  Membalas...
+                </strong>
+                <p id="reply-preview-text"></p>
+              </div>
+
+              <button
+                type="button"
+                onclick="cancelReply()"
+                title="Batalkan balasan"
+                aria-label="Batalkan balasan"
+              >
+                <i class="fa-solid fa-xmark" aria-hidden="true"></i>
+              </button>
+            </div>
+
+            <div class="chat-input-row">
+              <label
+                for="chat-file-input"
+                class="file-picker-button"
+                title="Kirim gambar atau audio"
+                aria-label="Kirim gambar atau audio"
+              >
+                <i class="fa-solid fa-paperclip" aria-hidden="true"></i>
+              </label>
+
+              <input
+                type="file"
+                id="chat-file-input"
+                accept="image/*,audio/*,.pdf,.doc,.docx,.txt"
+                style="display: none;"
+              >
+
+              <textarea
+                id="message-input"
+                rows="1"
+                maxlength="5000"
+                placeholder="Ketik pesan..."
+                aria-label="Masukkan pesan"
+              ></textarea>
+
+              <button
+                type="button"
+                id="mic-btn"
+                title="Kirim pesan suara"
+                aria-label="Kirim pesan suara"
+              >
+                <i class="fa-solid fa-microphone" aria-hidden="true"></i>
+              </button>
+
+              <button
+                type="button"
+                class="send-button"
+                onclick="sendMessage()"
+                title="Kirim pesan"
+                aria-label="Kirim pesan"
+              >
+                <svg
+                  viewBox="0 0 24 24"
+                  width="20"
+                  height="20"
+                  fill="currentColor"
+                  aria-hidden="true"
+                >
+                  <path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"></path>
+                </svg>
+              </button>
+            </div>
+          </div>
+        </section>
+
+        <section
+          id="content-album"
+          class="tab-content hidden"
+          role="tabpanel"
+          aria-hidden="true"
+        >
+          <header class="chat-header">
+            <h2>
+              <i class="fa-solid fa-images" aria-hidden="true"></i>
+              Album Kenangan Keluarga
+            </h2>
+          </header>
+
+          <div class="tab-scroll-content">
+            <div class="upload-card">
+              <button
+                type="button"
+                class="upload-trigger"
+                onclick="document.getElementById('photo-file-input').click()"
+              >
+                <span class="upload-icon" style="background: none; width: auto; height: auto; color: var(--primary-color); font-size: 22px;">
+                  <i class="fa-solid fa-camera-retro" aria-hidden="true"></i>
+                </span>
+
+                <span>
+                  <strong>Unggah Momen Keluarga</strong>
+                  <small id="selected-file-label">
+                    Ketuk untuk pilih dari galeri atau kamera
+                  </small>
+                </span>
+
+                <i
+                  class="fa-solid fa-chevron-right"
+                  aria-hidden="true"
+                ></i>
+              </button>
+
+              <form
+                id="photo-upload-form"
+                class="hidden"
+                onsubmit="handleUploadPhoto(event)"
+              >
+                <img
+                  id="photo-preview"
+                  src=""
+                  alt="Pratinjau foto"
+                  hidden
+                >
+
+                <input
+                  type="text"
+                  id="photo-caption-input"
+                  maxlength="500"
+                  placeholder="Keterangan foto (opsional)"
+                >
+
+                <div class="form-actions">
+                  <button
+                    type="submit"
+                    class="btn-primary"
+                  >
+                    Kirim Foto
+                  </button>
+
+                  <button
+                    type="button"
+                    class="btn-secondary"
+                    onclick="cancelAlbumUpload()"
+                  >
+                    Batal
+                  </button>
+                </div>
+              </form>
+
+              <input
+                type="file"
+                id="photo-file-input"
+                accept="image/jpeg,image/png,image/webp,image/gif"
+                onchange="onAlbumFileChange(event)"
+                hidden
+              >
+            </div>
+
+            <div
+              id="album-grid-container"
+              class="album-grid"
+              aria-live="polite"
+            ></div>
+          </div>
+        </section>
+
+        <section
+          id="content-agenda"
+          class="tab-content hidden"
+          role="tabpanel"
+          aria-hidden="true"
+        >
+          <header class="chat-header">
+            <h2>
+              <i class="fa-solid fa-calendar-days" aria-hidden="true"></i>
+              Agenda & Ulang Tahun
+            </h2>
+          </header>
+
+          <div class="tab-scroll-content">
+            <div class="content-card">
+              <section class="card-section">
+                <h3>
+                  <i class="fa-solid fa-cake-candles" aria-hidden="true"></i>
+                  Daftar Ulang Tahun Anggota
+                </h3>
+
+                <div
+                  id="birthday-list-container"
+                  class="birthday-grid"
+                ></div>
+              </section>
+
+              <section class="card-section">
+                <button
+                  type="button"
+                  class="section-toggle"
+                  onclick="toggleAgendaForm()"
+                  aria-controls="agenda-form-container"
+                >
+                  <span>
+                    <strong>
+                      <i
+                        class="fa-solid fa-calendar-plus"
+                        aria-hidden="true"
+                      ></i>
+                      Tambah Agenda Keluarga
+                    </strong>
+                    <small id="agenda-toggle-label">
+                      Ketuk untuk membuat jadwal baru
+                    </small>
+                  </span>
+
+                  <i
+                    class="fa-solid fa-chevron-right"
+                    id="agenda-chevron-icon"
+                    aria-hidden="true"
+                  ></i>
+                </button>
+
+                <form
+                  id="agenda-form-container"
+                  class="hidden"
+                  onsubmit="handleCreateAgenda(event)"
+                >
+                  <input
+                    type="text"
+                    id="agenda-title"
+                    maxlength="150"
+                    placeholder="Nama acara atau kegiatan"
+                    required
+                  >
+
+                  <input
+                    type="date"
+                    id="agenda-date"
+                    required
+                  >
+
+                  <input
+                    type="text"
+                    id="agenda-desc"
+                    maxlength="1000"
+                    placeholder="Keterangan atau lokasi (opsional)"
+                  >
+
+                  <div class="form-actions">
+                    <button
+                      type="submit"
+                      class="btn-primary"
+                    >
+                      Simpan
+                    </button>
+
+                    <button
+                      type="button"
+                      class="btn-secondary"
+                      onclick="toggleAgendaForm()"
+                    >
+                      Batal
+                    </button>
+                  </div>
+                </form>
+              </section>
+
+              <section class="card-section">
+                <h3>
+                  <i class="fa-solid fa-list-check" aria-hidden="true"></i>
+                  Daftar Kegiatan Mendatang
+                </h3>
+
+                <div
+                  id="agenda-list-container"
+                  class="stack-list"
+                ></div>
+              </section>
+            </div>
+          </div>
+        </section>
+
+        <section
+          id="content-family"
+          class="tab-content hidden"
+          role="tabpanel"
+          aria-hidden="true"
+        >
+          <header class="chat-header">
+            <h2>
+              <i class="fa-solid fa-users" aria-hidden="true"></i>
+              Daftar Anggota Keluarga
+            </h2>
+          </header>
+
+          <div class="tab-scroll-content">
+            <div
+              id="family-list-container"
+              class="family-directory"
+            ></div>
+          </div>
+        </section>
+
+        <section
+          id="content-settings"
+          class="tab-content hidden"
+          role="tabpanel"
+          aria-hidden="true"
+        >
+          <header class="chat-header">
+            <h2>
+              <i class="fa-solid fa-gear" aria-hidden="true"></i>
+              Pengaturan
+            </h2>
+          </header>
+
+          <div class="tab-scroll-content settings-content">
+            <input
+              type="file"
+              id="hidden-profile-file-input"
+              accept="image/jpeg,image/png,image/webp,image/gif"
+              onchange="triggerUploadProfile(this)"
+              hidden
+            >
+
+            <div class="profile-card">
+              <img
+                id="settings-user-avatar"
+                src="/logo-192.png"
+                alt="Foto profil"
+                width="60"
+                height="60"
+              >
+
+              <div>
+                <h3 id="settings-user-name">
+                  Nama Pengguna
+                </h3>
+
+                <p id="settings-user-phone">
+                  <i class="fa-solid fa-phone" aria-hidden="true"></i>
+                  Nomor Telepon
+                </p>
+              </div>
+            </div>
+
+            <div class="settings-card">
+              <button
+                type="button"
+                class="settings-item"
+                onclick="openEditProfileModal()"
+              >
+                <span>
+                  <i class="fa-solid fa-user-pen" aria-hidden="true"></i>
+                  <span>
+                    <strong>Ubah Informasi Profil</strong>
+                    <small>Perbarui nama dan tanggal lahir</small>
+                  </span>
+                </span>
+                <i class="fa-solid fa-chevron-right" aria-hidden="true"></i>
+              </button>
+
+              <button
+                type="button"
+                class="settings-item"
+                onclick="document.getElementById('hidden-profile-file-input').click()"
+              >
+                <span>
+                  <i class="fa-solid fa-image" aria-hidden="true"></i>
+                  <span>
+                    <strong>Ganti Foto Profil</strong>
+                    <small>Perbarui foto akun</small>
+                  </span>
+                </span>
+                <i class="fa-solid fa-chevron-right" aria-hidden="true"></i>
+              </button>
+
+              <button
+                type="button"
+                id="install-pwa-container"
+                class="settings-item hidden"
+                onclick="installAppToAndroid()"
+              >
+                <span>
+                  <i class="fa-solid fa-mobile-screen-button" aria-hidden="true"></i>
+                  <span>
+                    <strong>Instal Aplikasi</strong>
+                    <small>Tambahkan Kitachat ke layar utama</small>
+                  </span>
+                </span>
+                <i class="fa-solid fa-chevron-right" aria-hidden="true"></i>
+              </button>
+
+              <button
+                type="button"
+                class="settings-item"
+                onclick="toggleTheme()"
+              >
+                <span>
+                  <i class="fa-solid fa-circle-half-stroke" aria-hidden="true"></i>
+                  <span>
+                    <strong>Tema Tampilan</strong>
+                    <small>Beralih antara mode gelap dan terang</small>
+                  </span>
+                </span>
+                <i class="fa-solid fa-chevron-right" aria-hidden="true"></i>
+              </button>
+
+              <button
+                type="button"
+                class="settings-item"
+                onclick="clearChat()"
+              >
+                <span>
+                  <i
+                    class="fa-solid fa-trash-can danger"
+                    aria-hidden="true"
+                  ></i>
+                  <span>
+                    <strong>Hapus Pesan Saya</strong>
+                    <small>Hapus pesan yang Anda kirim</small>
+                  </span>
+                </span>
+                <i class="fa-solid fa-chevron-right" aria-hidden="true"></i>
+              </button>
+
+              <button
+                type="button"
+                class="settings-item"
+                onclick="document.getElementById('email-modal').classList.remove('hidden')"
+              >
+                <span>
+                  <i class="fa-solid fa-envelope" aria-hidden="true"></i>
+                  <span>
+                    <strong>Email Pemulihan</strong>
+                    <small>Tambah email untuk reset password</small>
+                  </span>
+                </span>
+                <i class="fa-solid fa-chevron-right" aria-hidden="true"></i>
+              </button>
+
+              <button
+                type="button"
+                class="settings-item"
+                onclick="openChangePasswordModal()"
+              >
+                <span>
+                  <i class="fa-solid fa-lock" aria-hidden="true"></i>
+                  <span>
+                    <strong>Ganti Password</strong>
+                    <small>Perbarui kata sandi akun</small>
+                  </span>
+                </span>
+                <i class="fa-solid fa-chevron-right" aria-hidden="true"></i>
+              </button>
+
+              <button
+                type="button"
+                class="settings-item"
+                onclick="forceUpdateApp()"
+              >
+                <span>
+                  <i class="fa-solid fa-arrows-rotate" aria-hidden="true"></i>
+                  <span>
+                    <strong>Cek Pembaruan</strong>
+                    <small>Periksa versi aplikasi terbaru</small>
+                  </span>
+                </span>
+                <i class="fa-solid fa-chevron-right" aria-hidden="true"></i>
+              </button>
+
+              <button
+                type="button"
+                class="settings-item"
+                onclick="logout()"
+              >
+                <span>
+                  <i
+                    class="fa-solid fa-right-from-bracket danger"
+                    aria-hidden="true"
+                  ></i>
+                  <span>
+                    <strong class="danger">Keluar Aplikasi</strong>
+                    <small>Akhiri sesi akun</small>
+                  </span>
+                </span>
+                <i class="fa-solid fa-chevron-right" aria-hidden="true"></i>
+              </button>
+            </div>
+          </div>
+        </section>
+      </section>
+
+      <div
+        id="photo-zoom-modal"
+        class="hidden modal-overlay"
+        role="dialog"
+        aria-modal="true"
+        aria-hidden="true"
+        aria-label="Pratinjau foto"
+      >
+        <button
+          type="button"
+          class="modal-close-button"
+          onclick="closeZoomModal()"
+          aria-label="Tutup pratinjau foto"
+        >
+          <i class="fa-solid fa-xmark" aria-hidden="true"></i>
+        </button>
+
+        <img
+          id="zoomed-img-element"
+          src=""
+          alt="Foto keluarga"
+        >
+      </div>
+
+      <div id="edit-profile-modal" class="modal-overlay hidden">
+        <div class="modal-card">
+          <h2><i class="fa-solid fa-user-pen"></i> Edit Profil</h2>
+          <form onsubmit="handleUpdateProfile(event)">
+            <label style="font-size: 13px; font-weight: 600; text-align: left; display: block; margin-bottom: 4px;">Nama Lengkap</label>
+            <input type="text" id="edit-profile-name" required maxlength="100">
+            
+            <label style="font-size: 13px; font-weight: 600; text-align: left; display: block; margin: 10px 0 4px 0;">Tanggal Lahir</label>
+            <input type="date" id="edit-profile-birthdate">
+
+            <div class="form-actions" style="margin-top: 15px;">
+              <button type="button" class="btn-secondary" onclick="closeEditProfileModal()">Batal</button>
+              <button type="submit" class="btn-primary">Simpan</button>
+            </div>
+          </form>
+        </div>
+      </div>
+
+      <div
+        id="call-modal"
+        class="hidden modal-overlay"
+        role="dialog"
+        aria-modal="true"
+        aria-hidden="true"
+        aria-labelledby="call-status-title"
+      >
+        <div class="modal-card call-card">
+          <i
+            class="fa-solid fa-phone-volume call-icon"
+            aria-hidden="true"
+          ></i>
+
+          <h2 id="call-status-title">Memanggil...</h2>
+          <p id="call-peer-name">Nama Anggota Keluarga</p>
+
+          <div class="call-actions">
+            <button
+            type="button"
+            id="btn-accept-call"
+            class="btn-success"
+            onclick="acceptCall()"
+            hidden
+          >
+            <i class="fa-solid fa-check" aria-hidden="true"></i>
+            Terima
+          </button>
+
+            <button
+              type="button"
+              class="btn-danger"
+              onclick="hangUpCall()"
+            >
+              <i class="fa-solid fa-phone-slash" aria-hidden="true"></i>
+              Tutup
+            </button>
+          </div>
+
+          <audio
+            id="remote-audio"
+            autoplay
+            playsinline
+          ></audio>
+        </div>
+      </div>
+
+      <div
+        id="call-selection-modal"
+        class="hidden modal-overlay"
+        role="dialog"
+        aria-modal="true"
+        aria-hidden="true"
+      >
+        <div class="modal-card" style="max-width: 360px; width: 90%;">
+          <h2><i class="fa-solid fa-phone" aria-hidden="true"></i> Pilih Keluarga</h2>
+          <p style="font-size: 13px; color: var(--text-muted); margin-bottom: 12px;">Ketuk anggota keluarga untuk memulai panggilan suara.</p>
+          
+          <div id="call-selection-list" style="display: flex; flex-direction: column; gap: 8px; max-height: 250px; overflow-y: auto; margin-bottom: 15px;"></div>
+
+          <div class="form-actions">
+            <button
+              type="button"
+              class="btn-secondary"
+              onclick="closeCallSelectionModal()"
+            >
+              Batal
+            </button>
+          </div>
+        </div>
+      </div>
+      
+      <div
+        id="password-modal"
+        class="hidden modal-overlay"
+        role="dialog"
+        aria-modal="true"
+        aria-hidden="true"
+        aria-labelledby="password-modal-title"
+      >
+        <div class="modal-card">
+          <h2 id="password-modal-title">
+            <i class="fa-solid fa-lock" aria-hidden="true"></i>
+            Ganti Password
+          </h2>
+
+          <form onsubmit="handleChangePassword(event)">
+            <input
+              type="password"
+              id="old-password"
+              autocomplete="current-password"
+              placeholder="Password lama"
+              required
+            >
+
+            <input
+              type="password"
+              id="new-password"
+              autocomplete="new-password"
+              minlength="8"
+              placeholder="Password baru minimal 8 karakter"
+              required
+            >
+
+            <div class="form-actions">
+              <button
+                type="button"
+                class="btn-secondary"
+                onclick="closeChangePasswordModal()"
+              >
+                Batal
+              </button>
+
+              <button type="submit" class="btn-primary">
+                Simpan
+              </button>
+            </div>
+          </form>
+        </div>
+      </div>
+
+      <div
+        id="email-modal"
+        class="hidden modal-overlay"
+        role="dialog"
+        aria-modal="true"
+        aria-hidden="true"
+        aria-labelledby="email-modal-title"
+      >
+        <div class="modal-card">
+          <h2 id="email-modal-title">
+            <i class="fa-solid fa-envelope" aria-hidden="true"></i>
+            Email Pemulihan
+          </h2>
+
+          <form onsubmit="handleUpdateEmail(event)">
+            <input
+              type="email"
+              id="recovery-email"
+              autocomplete="email"
+              placeholder="Alamat email aktif"
+              required
+            >
+
+            <div class="form-actions">
+              <button
+                type="button"
+                class="btn-secondary"
+                onclick="document.getElementById('email-modal').classList.add('hidden')"
+              >
+                Batal
+              </button>
+
+              <button type="submit" class="btn-primary">
+                Simpan
+              </button>
+            </div>
+          </form>
+        </div>
+      </div>
+
+      <div
+        id="otp-modal"
+        class="hidden modal-overlay"
+        role="dialog"
+        aria-modal="true"
+        aria-hidden="true"
+        aria-labelledby="otp-modal-title"
+      >
+        <div class="modal-card">
+          <h2 id="otp-modal-title">
+            <i class="fa-solid fa-key" aria-hidden="true"></i>
+            Reset Password
+          </h2>
+
+          <p class="modal-help-text">
+            Masukkan kode OTP yang dikirim ke email pemulihan Anda.
+          </p>
+
+          <form onsubmit="handleResetPassword(event)">
+            <input
+              type="text"
+              id="reset-otp"
+              inputmode="numeric"
+              autocomplete="one-time-code"
+              pattern="[0-9]{6}"
+              maxlength="6"
+              placeholder="Kode OTP 6 digit"
+              required
+            >
+
+            <input
+              type="password"
+              id="reset-new-password"
+              autocomplete="new-password"
+              minlength="8"
+              placeholder="Password baru minimal 8 karakter"
+              required
+            >
+
+            <div class="form-actions">
+              <button
+                type="button"
+                class="btn-secondary"
+                onclick="document.getElementById('otp-modal').classList.add('hidden')"
+              >
+                Batal
+              </button>
+
+              <button type="submit" class="btn-primary">
+                Ubah Password
+              </button>
+            </div>
+          </form>
+        </div>
+      </div>
+
+      <nav
+        class="sidebar-menu mobile-bottom-nav"
+        aria-label="Navigasi mobile"
+      >
+        <button
+          class="menu-item active"
+          data-tab="chat"
+          aria-selected="true"
+          onclick="switchTabNav('chat', this)"
+        >
+          <i class="fa-solid fa-message" aria-hidden="true"></i>
+          <span>Obrolan</span>
+        </button>
+
+        <button
+          class="menu-item"
+          data-tab="album"
+          aria-selected="false"
+          onclick="switchTabNav('album', this)"
+        >
+          <i class="fa-solid fa-images" aria-hidden="true"></i>
+          <span>Album</span>
+        </button>
+
+        <button
+          class="menu-item"
+          data-tab="agenda"
+          aria-selected="false"
+          onclick="switchTabNav('agenda', this)"
+        >
+          <i class="fa-solid fa-calendar-days" aria-hidden="true"></i>
+          <span>Agenda</span>
+        </button>
+
+        <button
+          class="menu-item"
+          data-tab="family"
+          aria-selected="false"
+          onclick="switchTabNav('family', this)"
+        >
+          <i class="fa-solid fa-users" aria-hidden="true"></i>
+          <span>Keluarga</span>
+        </button>
+
+        <button
+          class="menu-item"
+          data-tab="settings"
+          aria-selected="false"
+          onclick="switchTabNav('settings', this)"
+        >
+          <i class="fa-solid fa-gear" aria-hidden="true"></i>
+          <span>Pengaturan</span>
+        </button>
+      </nav>
+    </main>
+  </div>
+
+  <script src="/socket.io/socket.io.js" defer></script>
+  <script src="/app.js" defer></script>
+</body>
+</html>

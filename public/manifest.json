@@ -1,0 +1,33 @@
+{
+  "id": "/kitachat-app",
+  "name": "Kitachat - Hub Keluarga",
+  "short_name": "Kitachat",
+  "description": "Kitachat adalah hub keluarga untuk chat, album foto, agenda, dan panggilan suara.",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "display_override": ["window-controls-overlay", "standalone"],
+  "orientation": "portrait",
+  "theme_color": "#00a884",
+  "background_color": "#efeae2",
+  "lang": "id-ID",
+  "dir": "ltr",
+  "categories": ["social", "lifestyle"],
+  "icons": [
+    {
+      "src": "/logo-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ],
+  "shortcuts": [
+    {
+      "name": "Lihat Album",
+      "short_name": "Album",
+      "description": "Buka galeri foto keluarga",
+      "url": "/",
+      "icons": [{ "src": "/logo-192.png", "sizes": "192x192" }]
+    }
+  ]
+}
