@@ -1011,6 +1011,21 @@ io.on('connection', async socket => {
     }
   });
 
+  // REVISI: Penambahan Socket Event untuk Typing Indicator tepat sebelum disconnect[cite: 10]
+  socket.on('typing', () => {
+    if (!socket.familyCode) return;
+    socket.to(socket.familyCode).emit('user_typing', {
+      userId: socket.userId
+    });
+  });
+
+  socket.on('stop_typing', () => {
+    if (!socket.familyCode) return;
+    socket.to(socket.familyCode).emit('user_stop_typing', {
+      userId: socket.userId
+    });
+  });
+
   socket.on('disconnect', () => {
     if (activeUsers.get(socket.userId) === socket.id) {
       activeUsers.delete(socket.userId);
