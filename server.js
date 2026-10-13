@@ -33,8 +33,7 @@ const io = new Server(server, {
 });
 
 const PORT = Number(process.env.PORT) || 3000;
-const uploadDir = process.env.UPLOAD_DIR ||
-  path.join(__dirname, 'data', 'uploads');
+const uploadDir = process.env.UPLOAD_DIR || path.join(__dirname, 'data', 'uploads');
 
 const MAX_FILE_SIZE = 10 * 1024 * 1024;
 const PASSWORD_MIN_LENGTH = 8;
@@ -89,10 +88,7 @@ app.use(cors({
 }));
 
 app.use(express.json({ limit: '1mb' }));
-app.use(express.urlencoded({
-  extended: true,
-  limit: '1mb'
-}));
+app.use(express.urlencoded({ extended: true, limit: '1mb' }));
 
 app.use((req, res, next) => {
   res.setHeader('X-Content-Type-Options', 'nosniff');
@@ -103,16 +99,11 @@ app.use((req, res, next) => {
 
 app.use((req, res, next) => {
   const requestPath = req.path;
-
   if (requestPath === '/sw.js' || requestPath === '/app.js') {
-    res.setHeader(
-      'Cache-Control',
-      'no-store, no-cache, must-revalidate, proxy-revalidate'
-    );
+    res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
     res.setHeader('Pragma', 'no-cache');
     res.setHeader('Expires', '0');
   }
-
   next();
 });
 
@@ -132,18 +123,18 @@ app.use(
     contentSecurityPolicy: {
       directives: {
         defaultSrc: ["'self'"],
-        scriptSrc: ["'self'", "'unsafe-inline'", "https://cdn.jsdelivr.net", "https://cdnjs.cloudflare.com"],
-        styleSrc: ["'self'", "'unsafe-inline'", "https://cdnjs.cloudflare.com"],
+        scriptSrc: ["'self'", "'unsafe-inline'", "https://jsdelivr.net", "https://cloudflare.com"],
+        styleSrc: ["'self'", "'unsafe-inline'", "https://cloudflare.com"],
         imgSrc: ["'self'", "data:", "blob:", "https:"],
-        fontSrc: ["'self'", "https://cdnjs.cloudflare.com", "data:"],
+        fontSrc: ["'self'", "https://cloudflare.com", "data:"],
       },
     },
   })
 );
 
 const apiLimiter = rateLimit({
-  windowMs: 15 * 60 * 1000, 
-  max: 150, 
+  windowMs: 15 * 60 * 1000,
+  max: 150,
   standardHeaders: true,
   legacyHeaders: false,
   message: { error: 'Terlalu banyak permintaan dari IP ini, silakan coba lagi setelah 15 menit.' }
@@ -155,7 +146,6 @@ const storage = multer.diskStorage({
   destination: (req, file, callback) => {
     callback(null, uploadDir);
   },
-
   filename: (req, file, callback) => {
     const extension = path.extname(file.originalname).toLowerCase();
     callback(null, `${crypto.randomUUID()}${extension}`);
@@ -164,10 +154,7 @@ const storage = multer.diskStorage({
 
 const imageUpload = multer({
   storage,
-  limits: {
-    fileSize: MAX_FILE_SIZE,
-    files: 1
-  },
+  limits: { fileSize: MAX_FILE_SIZE, files: 1 },
   fileFilter: (req, file, callback) => {
     if (!file.mimetype.startsWith('image/')) {
       return callback(new Error('Hanya file gambar yang diizinkan.'));
@@ -178,16 +165,12 @@ const imageUpload = multer({
 
 const mediaUpload = multer({
   storage,
-  limits: {
-    fileSize: MAX_FILE_SIZE,
-    files: 1
-  },
+  limits: { fileSize: MAX_FILE_SIZE, files: 1 },
   fileFilter: (req, file, callback) => {
     const isImage = file.mimetype.startsWith('image/');
-    const isAudio = file.mimetype.startsWith('audio/') || 
-                    file.mimetype === 'video/webm' || 
-                    file.mimetype === 'application/octet-stream';
-
+    const isAudio = file.mimetype.startsWith('audio/') ||
+      file.mimetype === 'video/webm' ||
+      file.mimetype === 'application/octet-stream';
     if (!isImage && !isAudio) {
       return callback(new Error('Hanya file gambar atau audio yang diizinkan.'));
     }
@@ -196,15 +179,9 @@ const mediaUpload = multer({
 });
 
 function escapeHTML(value) {
-  if (typeof value !== 'string') {
-    return value;
-  }
+  if (typeof value !== 'string') return value;
   return value.replace(/[&<>'"]/g, character => ({
-    '&': '&amp;',
-    '<': '&lt;',
-    '>': '&gt;',
-    "'": '&#39;',
-    '"': '&quot;'
+    '&': '&amp;', '<': '&lt;', '>': '&gt;', "'": '&#39;', '"': '&quot;'
   })[character]);
 }
 
@@ -213,8 +190,7 @@ function normalizePhone(phone) {
 }
 
 function isValidPassword(password) {
-  return typeof password === 'string' &&
-    password.length >= PASSWORD_MIN_LENGTH;
+  return typeof password === 'string' && password.length >= PASSWORD_MIN_LENGTH;
 }
 
 function isValidEmail(email) {
@@ -226,9 +202,7 @@ function getUploadUrl(filename) {
 }
 
 function deleteUploadedFile(file) {
-  if (!file || !file.path) {
-    return;
-  }
+  if (!file || !file.path) return;
   fs.unlink(file.path, error => {
     if (error && error.code !== 'ENOENT') {
       console.error('Gagal menghapus file upload:', error);
@@ -240,8 +214,6 @@ async function initDB() {
   const client = await pool.connect();
   try {
     await client.query('BEGIN');
-
-    // 1. Pembuatan Tabel Utama
     await client.query(`
       CREATE TABLE IF NOT EXISTS users (
         id SERIAL PRIMARY KEY,
@@ -300,7 +272,6 @@ async function initDB() {
       );
     `);
 
-    // 2. Migrasi Kolom Tambahan (Untuk keamanan jika tabel sudah ada sebelumnya)
     await client.query('ALTER TABLE users ADD COLUMN IF NOT EXISTS email VARCHAR(255)');
     await client.query('ALTER TABLE users ADD COLUMN IF NOT EXISTS family_code VARCHAR(50)');
     await client.query('ALTER TABLE users ADD COLUMN IF NOT EXISTS is_head BOOLEAN DEFAULT FALSE');
@@ -310,7 +281,6 @@ async function initDB() {
     await client.query('ALTER TABLE messages ADD COLUMN IF NOT EXISTS reply_to_id INT');
     await client.query('ALTER TABLE agendas ADD COLUMN IF NOT EXISTS family_code VARCHAR(50)');
 
-    // 3. Pembuatan Indeks untuk Performa Kueri
     await client.query('CREATE INDEX IF NOT EXISTS idx_messages_created_at ON messages(created_at)');
     await client.query('CREATE INDEX IF NOT EXISTS idx_messages_user_id ON messages(user_id)');
     await client.query('CREATE INDEX IF NOT EXISTS idx_messages_family_code ON messages(family_code)');
@@ -337,14 +307,12 @@ async function checkSingleDevice(req, res, next) {
   const clientToken = req.headers['x-session-token'];
 
   if (!userId || !clientToken) {
-    return res.status(401).json({
-      error: 'Akses ditolak. Sesi tidak valid atau belum login.'
-    });
+    return res.status(401).json({ error: 'Akses ditolak. Sesi tidak valid atau belum login.' });
   }
 
   try {
     const result = await pool.query(
-      `SELECT id, session_token, family_code FROM users WHERE id = $1`,
+      'SELECT id, session_token, family_code FROM users WHERE id = $1',
       [userId]
     );
 
@@ -353,18 +321,13 @@ async function checkSingleDevice(req, res, next) {
     }
 
     const dbToken = result.rows[0].session_token;
-
     if (!dbToken || dbToken !== clientToken) {
-      return res.status(403).json({
-        error: 'SESSION_KICKED',
-        message: 'Akun Anda telah login di perangkat lain.'
-      });
+      return res.status(403).json({ error: 'SESSION_KICKED', message: 'Akun Anda telah login di perangkat lain.' });
     }
 
     req.userId = result.rows[0].id;
     req.sessionToken = clientToken;
     req.familyCode = result.rows[0].family_code;
-
     next();
   } catch (error) {
     console.error('Error checkSingleDevice:', error);
@@ -379,15 +342,15 @@ app.get('/api/status', (req, res) => {
 app.post('/api/save-subscription', checkSingleDevice, async (req, res) => {
   const userId = req.userId;
   const { endpoint, keys } = req.body;
-  
+
   if (!endpoint || !keys) {
     return res.status(400).json({ error: 'Data langganan tidak valid.' });
   }
 
   try {
     await pool.query(
-      `INSERT INTO push_subscriptions (user_id, endpoint, p256dh, auth) 
-       VALUES ($1, $2, $3, $4) 
+      `INSERT INTO push_subscriptions (user_id, endpoint, p256dh, auth)
+       VALUES ($1, $2, $3, $4)
        ON CONFLICT (endpoint) DO NOTHING`,
       [userId, endpoint, keys.p256dh, keys.auth]
     );
@@ -411,15 +374,10 @@ app.post('/api/register', async (req, res) => {
   name = String(name).trim();
 
   try {
-    const existingUser = await pool.query(
-      'SELECT id FROM users WHERE phone = $1',
-      [phone]
-    );
+    const existingUser = await pool.query('SELECT id FROM users WHERE phone = $1', [phone]);
 
     if (existingUser.rows.length > 0) {
-      return res.status(409).json({
-        error: 'Nomor telepon sudah terdaftar di Kitachat.'
-      });
+      return res.status(409).json({ error: 'Nomor telepon sudah terdaftar di Kitachat.' });
     }
 
     let finalFamilyCode = '';
@@ -432,12 +390,8 @@ app.post('/api/register', async (req, res) => {
       if (!invite_code) {
         return res.status(400).json({ error: 'Kode undangan keluarga wajib diisi.' });
       }
-      
-      const checkCode = await pool.query(
-        'SELECT family_code FROM users WHERE family_code = $1 LIMIT 1',
-        [invite_code.trim().toUpperCase()]
-      );
 
+      const checkCode = await pool.query('SELECT family_code FROM users WHERE family_code = $1 LIMIT 1', [invite_code.trim().toUpperCase()]);
       if (checkCode.rows.length === 0) {
         return res.status(404).json({ error: 'Kode undangan keluarga tidak valid atau tidak ditemukan.' });
       }
@@ -461,8 +415,8 @@ app.post('/api/register', async (req, res) => {
     );
 
     return res.status(201).json({
-      message: isHead 
-        ? `Keluarga berhasil dibuat! Kode Undangan Anda: ${finalFamilyCode}` 
+      message: isHead
+        ? `Keluarga berhasil dibuat! Kode Undangan Anda: ${finalFamilyCode}`
         : 'Berhasil bergabung ke dalam keluarga!',
       session_token: sessionToken,
       family_code: finalFamilyCode,
@@ -478,36 +432,21 @@ app.post('/api/login', async (req, res) => {
   let { phone, password } = req.body;
 
   if (!phone || !password) {
-    return res.status(400).json({
-      error: 'Nomor telepon dan password wajib diisi.'
-    });
+    return res.status(400).json({ error: 'Nomor telepon dan password wajib diisi.' });
   }
 
   phone = normalizePhone(phone);
 
   try {
-    const result = await pool.query(
-      `SELECT id, phone, name, password, birthdate, photo_url, family_code FROM users WHERE phone = $1`,
-      [phone]
-    );
-
-    if (result.rows.length === 0) {
-      return res.status(404).json({ error: 'Nomor telepon belum terdaftar.' });
-    }
+    const result = await pool.query('SELECT id, phone, name, password, birthdate, photo_url, family_code FROM users WHERE phone = $1', [phone]);
+    if (result.rows.length === 0) return res.status(404).json({ error: 'Nomor telepon belum terdaftar.' });
 
     const user = result.rows[0];
     const passwordValid = await bcrypt.compare(password, user.password);
-
-    if (!passwordValid) {
-      return res.status(401).json({ error: 'Password salah.' });
-    }
+    if (!passwordValid) return res.status(401).json({ error: 'Password salah.' });
 
     const sessionToken = crypto.randomBytes(32).toString('hex');
-
-    await pool.query(
-      'UPDATE users SET session_token = $1 WHERE id = $2',
-      [sessionToken, user.id]
-    );
+    await pool.query('UPDATE users SET session_token = $1 WHERE id = $2', [sessionToken, user.id]);
 
     return res.json({
       message: 'Login berhasil!',
@@ -529,25 +468,14 @@ app.post('/api/login', async (req, res) => {
 
 app.get('/api/users', checkSingleDevice, async (req, res) => {
   try {
-    const result = await pool.query(`
-      SELECT id, name, phone, birthdate, photo_url, created_at
-      FROM users
-      WHERE family_code = $1
-      ORDER BY name ASC
-    `, [req.familyCode]);
-
+    const result = await pool.query('SELECT id, name, phone, birthdate, photo_url, created_at FROM users WHERE family_code = $1 ORDER BY name ASC', [req.familyCode]);
     const usersWithMaskedPhone = result.rows.map(user => {
       let phone = user.phone || '';
       if (phone.length > 6 && Number(req.userId) !== Number(user.id)) {
         phone = phone.substring(0, 4) + '****' + phone.substring(phone.length - 3);
       }
-      return {
-        ...user,
-        phone,
-        is_online: activeUsers.has(String(user.id))
-      };
+      return { ...user, phone, is_online: activeUsers.has(String(user.id)) };
     });
-
     return res.json(usersWithMaskedPhone);
   } catch (error) {
     console.error('Error mengambil users:', error);
@@ -559,10 +487,7 @@ app.get('/api/albums', checkSingleDevice, async (req, res) => {
   try {
     const result = await pool.query(`
       SELECT albums.id, albums.user_id, albums.image_url, albums.caption, albums.created_at, users.name AS uploader_name
-      FROM albums
-      JOIN users ON albums.user_id = users.id
-      WHERE users.family_code = $1
-      ORDER BY albums.created_at DESC
+      FROM albums JOIN users ON albums.user_id = users.id WHERE users.family_code = $1 ORDER BY albums.created_at DESC
     `, [req.familyCode]);
     return res.json(result.rows);
   } catch (error) {
@@ -574,17 +499,11 @@ app.get('/api/albums', checkSingleDevice, async (req, res) => {
 app.post('/api/albums', checkSingleDevice, imageUpload.single('image'), async (req, res) => {
   const userId = req.userId;
   try {
-    if (!req.file) {
-      return res.status(400).json({ error: 'File gambar wajib diunggah.' });
-    }
+    if (!req.file) return res.status(400).json({ error: 'File gambar wajib diunggah.' });
     const caption = String(req.body.caption || '').trim();
     const imageUrl = getUploadUrl(req.file.filename);
 
-    const result = await pool.query(
-      `INSERT INTO albums (user_id, image_url, caption) VALUES ($1, $2, $3) RETURNING id, user_id, image_url, caption, created_at`,
-      [userId, imageUrl, escapeHTML(caption)]
-    );
-
+    const result = await pool.query('INSERT INTO albums (user_id, image_url, caption) VALUES ($1, $2, $3) RETURNING id, user_id, image_url, caption, created_at', [userId, imageUrl, escapeHTML(caption)]);
     return res.status(201).json({ message: 'Foto berhasil diunggah.', photo: result.rows[0] });
   } catch (error) {
     deleteUploadedFile(req.file);
@@ -597,13 +516,9 @@ app.delete('/api/albums/:id', checkSingleDevice, async (req, res) => {
   const albumId = Number(req.params.id);
   const userId = req.userId;
   try {
-    const result = await pool.query(`DELETE FROM albums WHERE id = $1 AND user_id = $2 RETURNING image_url`, [albumId, userId]);
-    if (result.rowCount === 0) {
-      return res.status(403).json({ error: 'Anda tidak memiliki izin menghapus foto ini.' });
-    }
-    if (result.rows[0].image_url) {
-      deleteUploadedFile({ path: path.join(__dirname, result.rows[0].image_url.replace(/^\//, '')) });
-    }
+    const result = await pool.query('DELETE FROM albums WHERE id = $1 AND user_id = $2 RETURNING image_url', [albumId, userId]);
+    if (result.rowCount === 0) return res.status(403).json({ error: 'Anda tidak memiliki izin menghapus foto ini.' });
+    if (result.rows[0].image_url) deleteUploadedFile({ path: path.join(__dirname, result.rows[0].image_url.replace(/^\//, '')) });
     return res.json({ message: 'Foto berhasil dihapus.' });
   } catch (error) {
     console.error('Error menghapus album:', error);
@@ -613,12 +528,7 @@ app.delete('/api/albums/:id', checkSingleDevice, async (req, res) => {
 
 app.get('/api/agendas', checkSingleDevice, async (req, res) => {
   try {
-    const result = await pool.query(`
-      SELECT id, title, event_date, description, created_at 
-      FROM agendas 
-      WHERE family_code = $1 
-      ORDER BY event_date ASC, created_at ASC
-    `, [req.familyCode]);
+    const result = await pool.query('SELECT id, title, event_date, description, created_at FROM agendas WHERE family_code = $1 ORDER BY event_date ASC, created_at ASC', [req.familyCode]);
     return res.json(result.rows);
   } catch (error) {
     console.error('Error mengambil agenda:', error);
@@ -628,14 +538,9 @@ app.get('/api/agendas', checkSingleDevice, async (req, res) => {
 
 app.post('/api/agendas', checkSingleDevice, async (req, res) => {
   let { title, event_date, description } = req.body;
-  if (!title || !event_date) {
-    return res.status(400).json({ error: 'Judul dan tanggal wajib diisi.' });
-  }
+  if (!title || !event_date) return res.status(400).json({ error: 'Judul dan tanggal wajib diisi.' });
   try {
-    const result = await pool.query(
-      `INSERT INTO agendas (family_code, title, event_date, description) VALUES ($1, $2, $3, $4) RETURNING id, title, event_date, description, created_at`,
-      [req.familyCode, escapeHTML(title.trim()), event_date, escapeHTML(String(description || '').trim())]
-    );
+    const result = await pool.query('INSERT INTO agendas (family_code, title, event_date, description) VALUES ($1, $2, $3, $4) RETURNING id, title, event_date, description, created_at', [req.familyCode, escapeHTML(title.trim()), event_date, escapeHTML(String(description || '').trim())]);
     return res.status(201).json({ message: 'Agenda berhasil ditambahkan.', agenda: result.rows[0] });
   } catch (error) {
     console.error('Error menambah agenda:', error);
@@ -645,7 +550,7 @@ app.post('/api/agendas', checkSingleDevice, async (req, res) => {
 
 app.delete('/api/agendas/:id', checkSingleDevice, async (req, res) => {
   try {
-    const result = await pool.query(`DELETE FROM agendas WHERE id = $1 RETURNING id`, [req.params.id]);
+    const result = await pool.query('DELETE FROM agendas WHERE id = $1 RETURNING id', [req.params.id]);
     if (result.rowCount === 0) return res.status(404).json({ error: 'Agenda tidak ditemukan.' });
     return res.json({ message: 'Agenda berhasil dihapus.' });
   } catch (error) {
@@ -656,12 +561,7 @@ app.delete('/api/agendas/:id', checkSingleDevice, async (req, res) => {
 
 app.get('/api/family-birthdays', checkSingleDevice, async (req, res) => {
   try {
-    const result = await pool.query(`
-      SELECT id, name, photo_url AS profile_picture, birthdate AS birth_date 
-      FROM users 
-      WHERE family_code = $1 
-      ORDER BY birthdate ASC NULLS LAST, name ASC
-    `, [req.familyCode]);
+    const result = await pool.query('SELECT id, name, photo_url AS profile_picture, birthdate AS birth_date FROM users WHERE family_code = $1 ORDER BY birthdate ASC NULLS LAST, name ASC', [req.familyCode]);
     res.json(result.rows);
   } catch (err) {
     console.error("Error fetching birthdays:", err);
@@ -673,14 +573,13 @@ app.post('/api/update-photo', checkSingleDevice, imageUpload.single('image'), as
   const userId = req.userId;
   try {
     if (!req.file) return res.status(400).json({ error: 'File foto wajib diunggah.' });
+
     const oldUser = await pool.query('SELECT photo_url FROM users WHERE id = $1', [userId]);
     const photoUrl = getUploadUrl(req.file.filename);
-
     const result = await pool.query(
-      `UPDATE users SET photo_url = $1 WHERE id = $2 RETURNING id, phone, name, birthdate, photo_url, family_code`,
+      'UPDATE users SET photo_url = $1 WHERE id = $2 RETURNING id, phone, name, birthdate, photo_url, family_code',
       [photoUrl, userId]
     );
-
     if (oldUser.rows[0]?.photo_url) {
       deleteUploadedFile({ path: path.join(__dirname, oldUser.rows[0].photo_url.replace(/^\//, '')) });
     }
@@ -696,16 +595,58 @@ app.put('/api/update-profile', checkSingleDevice, async (req, res) => {
   const userId = req.userId;
   let { name, birthdate } = req.body;
   if (!name) return res.status(400).json({ error: 'Nama profil wajib diisi.' });
-
   try {
     const result = await pool.query(
-      `UPDATE users SET name = $1, birthdate = $2 WHERE id = $3 RETURNING id, phone, name, birthdate, photo_url, family_code`,
+      'UPDATE users SET name = $1, birthdate = $2 WHERE id = $3 RETURNING id, phone, name, birthdate, photo_url, family_code',
       [escapeHTML(name.trim()), birthdate || null, userId]
     );
     return res.json({ message: 'Profil diperbarui.', user: result.rows[0] });
   } catch (error) {
     console.error('Error update profile:', error);
     return res.status(500).json({ error: 'Terjadi kesalahan pada server.' });
+  }
+});
+
+// Endpoint REST mengambil riwayat pesan untuk Retrofit Android
+app.get('/api/messages', checkSingleDevice, async (req, res) => {
+  try {
+    const historyQuery = await pool.query(`
+      SELECT 
+        messages.id, 
+        messages.family_code, 
+        messages.user_id, 
+        users.name AS sender, 
+        messages.message AS text, 
+        messages.image_url, 
+        messages.audio_url, 
+        messages.reply_to_id, 
+        messages.is_deleted, 
+        messages.created_at AS timestamp, 
+        messages.client_time 
+      FROM messages 
+      JOIN users ON messages.user_id = users.id 
+      WHERE messages.family_code = $1 
+      ORDER BY messages.created_at ASC 
+      LIMIT 100
+    `, [req.familyCode]);
+
+    const formattedMessages = historyQuery.rows.map(row => ({
+      id: String(row.id),
+      family_code: row.family_code,
+      user_id: row.user_id,
+      sender: row.sender,
+      text: row.is_deleted ? "Pesan ini telah dihapus" : row.text,
+      message_type: row.image_url ? "image" : (row.audio_url ? "audio" : "text"),
+      image_url: row.image_url,
+      audio_url: row.audio_url,
+      reply_to_id: row.reply_to_id ? String(row.reply_to_id) : null,
+      is_deleted: row.is_deleted,
+      timestamp: row.client_time || new Date(row.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+    }));
+    return res.json(formattedMessages);
+  } catch (error) {
+    console.error('Error GET /api/messages:', error);
+    return res.status(500).json({ error: 'Gagal memuat riwayat pesan.' });
   }
 });
 
@@ -721,9 +662,9 @@ app.post('/api/send-message', checkSingleDevice, mediaUpload.single('media'), as
     let audioUrl = null;
 
     if (req.file) {
-      const isAudioFile = req.file.mimetype.startsWith('audio/') || 
-                          req.file.mimetype === 'video/webm' || 
-                          /\.(webm|m4a|mp3|wav|ogg|aac)$/i.test(req.file.originalname);
+      const isAudioFile = req.file.mimetype.startsWith('audio/') ||
+        req.file.mimetype === 'video/webm' ||
+        /\.(webm|m4a|mp3|wav|ogg|aac)$/i.test(req.file.originalname);
       if (isAudioFile) audioUrl = getUploadUrl(req.file.filename);
       else imageUrl = getUploadUrl(req.file.filename);
     }
@@ -866,36 +807,19 @@ app.put('/api/update-password', checkSingleDevice, async (req, res) => {
   }
 });
 
-
-// ==========================================================
-// FORGOT & RESET PASSWORD ENDPOINTS
-// ==========================================================
 app.post('/api/forgot-password', async (req, res) => {
   let { phone } = req.body;
-  if (!phone) {
-    return res.status(400).json({ error: 'Nomor telepon wajib diisi.' });
-  }
-
+  if (!phone) return res.status(400).json({ error: 'Nomor telepon wajib diisi.' });
   phone = normalizePhone(phone);
-
   try {
     const userResult = await pool.query('SELECT id, email FROM users WHERE phone = $1', [phone]);
-    if (userResult.rows.length === 0) {
-      return res.status(404).json({ error: 'Nomor telepon belum terdaftar.' });
-    }
-
+    if (userResult.rows.length === 0) return res.status(404).json({ error: 'Nomor telepon belum terdaftar.' });
     const user = userResult.rows[0];
-    if (!user.email) {
-      return res.status(400).json({ error: 'Anda belum mengatur email pemulihan di menu pengaturan.' });
-    }
+    if (!user.email) return res.status(400).json({ error: 'Anda belum mengatur email pemulihan di menu pengaturan.' });
 
     const otp = Math.floor(100000 + Math.random() * 900000).toString();
     const expiry = Date.now() + 15 * 60 * 1000;
-
-    await pool.query(
-      'UPDATE users SET reset_token = $1, reset_token_expiry = $2 WHERE id = $3',
-      [otp, expiry, user.id]
-    );
+    await pool.query('UPDATE users SET reset_token = $1, reset_token_expiry = $2 WHERE id = $3', [otp, expiry, user.id]);
 
     await transporter.sendMail({
       from: process.env.EMAIL_USER,
@@ -903,7 +827,6 @@ app.post('/api/forgot-password', async (req, res) => {
       subject: 'Kode OTP Pemulihan Password Kitachat',
       text: `Halo, kode OTP pemulihan akun Kitachat Anda adalah: ${otp}. Kode ini berlaku selama 15 menit.`
     });
-
     return res.json({ message: 'Kode OTP 6 digit telah dikirim ke email pemulihan Anda.' });
   } catch (error) {
     console.error('Error forgot-password:', error);
@@ -913,26 +836,12 @@ app.post('/api/forgot-password', async (req, res) => {
 
 app.post('/api/reset-password', async (req, res) => {
   let { phone, otp, new_password } = req.body;
-  if (!phone || !otp || !new_password) {
-    return res.status(400).json({ error: 'Nomor telepon, OTP, dan password baru wajib diisi.' });
-  }
-
-  if (!isValidPassword(new_password)) {
-    return res.status(400).json({ error: 'Password baru minimal 8 karakter.' });
-  }
-
+  if (!phone || !otp || !new_password) return res.status(400).json({ error: 'Nomor telepon, OTP, dan password baru wajib diisi.' });
+  if (!isValidPassword(new_password)) return res.status(400).json({ error: 'Password baru minimal 8 karakter.' });
   phone = normalizePhone(phone);
-
   try {
-    const userResult = await pool.query(
-      'SELECT id, reset_token, reset_token_expiry FROM users WHERE phone = $1',
-      [phone]
-    );
-
-    if (userResult.rows.length === 0) {
-      return res.status(404).json({ error: 'Pengguna tidak ditemukan.' });
-    }
-
+    const userResult = await pool.query('SELECT id, reset_token, reset_token_expiry FROM users WHERE phone = $1', [phone]);
+    if (userResult.rows.length === 0) return res.status(404).json({ error: 'Pengguna tidak ditemukan.' });
     const user = userResult.rows[0];
 
     if (!user.reset_token || user.reset_token !== otp || Date.now() > Number(user.reset_token_expiry)) {
@@ -940,12 +849,7 @@ app.post('/api/reset-password', async (req, res) => {
     }
 
     const hashedPassword = await bcrypt.hash(new_password, 12);
-
-    await pool.query(
-      'UPDATE users SET password = $1, reset_token = NULL, reset_token_expiry = NULL WHERE id = $2',
-      [hashedPassword, user.id]
-    );
-
+    await pool.query('UPDATE users SET password = $1, reset_token = NULL, reset_token_expiry = NULL WHERE id = $2', [hashedPassword, user.id]);
     return res.json({ message: 'Password berhasil diubah. Silakan masuk dengan password baru Anda.' });
   } catch (error) {
     console.error('Error reset-password:', error);
@@ -969,10 +873,8 @@ io.use(async (socket, next) => {
 
 io.on('connection', async socket => {
   activeUsers.set(socket.userId, socket.id);
-  
   if (socket.familyCode) {
     socket.join(socket.familyCode);
-
     try {
       const historyQuery = await pool.query(`
         SELECT 
@@ -984,11 +886,11 @@ io.on('connection', async socket => {
           messages.audio_url, 
           messages.reply_to_id, 
           messages.created_at, 
-          messages.client_time
-        FROM messages
-        JOIN users ON messages.user_id = users.id
-        WHERE messages.family_code = $1 AND messages.is_deleted = FALSE
-        ORDER BY messages.created_at ASC
+          messages.client_time 
+        FROM messages 
+        JOIN users ON messages.user_id = users.id 
+        WHERE messages.family_code = $1 AND messages.is_deleted = FALSE 
+        ORDER BY messages.created_at ASC 
         LIMIT 100
       `, [socket.familyCode]);
 
@@ -1002,7 +904,6 @@ io.on('connection', async socket => {
         reply_to_id: row.reply_to_id,
         time: row.client_time || new Date(row.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
       }));
-
       socket.emit('chat_history', formattedHistory);
     } catch (err) {
       console.error('Gagal memuat riwayat chat socket:', err);
@@ -1015,18 +916,9 @@ io.on('connection', async socket => {
     const { toUserId, callId, offer, callerName } = data;
     try {
       const targetUser = await pool.query('SELECT family_code FROM users WHERE id = $1', [toUserId]);
-      if (targetUser.rows.length === 0 || targetUser.rows[0].family_code !== socket.familyCode) {
-        return;
-      }
+      if (targetUser.rows.length === 0 || targetUser.rows[0].family_code !== socket.familyCode) return;
       const targetSocketId = activeUsers.get(String(toUserId));
-      if (targetSocketId) {
-        io.to(targetSocketId).emit('incoming_call', {
-          callId,
-          fromUserId: socket.userId,
-          callerName,
-          offer
-        });
-      }
+      if (targetSocketId) io.to(targetSocketId).emit('incoming_call', { callId, fromUserId: socket.userId, callerName, offer });
     } catch (err) {
       console.error('Error call_user signaling:', err);
     }
@@ -1036,17 +928,9 @@ io.on('connection', async socket => {
     const { toUserId, callId, answer } = data;
     try {
       const targetUser = await pool.query('SELECT family_code FROM users WHERE id = $1', [toUserId]);
-      if (targetUser.rows.length === 0 || targetUser.rows[0].family_code !== socket.familyCode) {
-        return;
-      }
+      if (targetUser.rows.length === 0 || targetUser.rows[0].family_code !== socket.familyCode) return;
       const targetSocketId = activeUsers.get(String(toUserId));
-      if (targetSocketId) {
-        io.to(targetSocketId).emit('call_answered', {
-          callId,
-          fromUserId: socket.userId,
-          answer
-        });
-      }
+      if (targetSocketId) io.to(targetSocketId).emit('call_answered', { callId, fromUserId: socket.userId, answer });
     } catch (err) {
       console.error('Error call_answer signaling:', err);
     }
@@ -1056,17 +940,9 @@ io.on('connection', async socket => {
     const { toUserId, callId, candidate } = data;
     try {
       const targetUser = await pool.query('SELECT family_code FROM users WHERE id = $1', [toUserId]);
-      if (targetUser.rows.length === 0 || targetUser.rows[0].family_code !== socket.familyCode) {
-        return;
-      }
+      if (targetUser.rows.length === 0 || targetUser.rows[0].family_code !== socket.familyCode) return;
       const targetSocketId = activeUsers.get(String(toUserId));
-      if (targetSocketId) {
-        io.to(targetSocketId).emit('ice_candidate', {
-          callId,
-          fromUserId: socket.userId,
-          candidate
-        });
-      }
+      if (targetSocketId) io.to(targetSocketId).emit('ice_candidate', { callId, fromUserId: socket.userId, candidate });
     } catch (err) {
       console.error('Error call_ice_candidate signaling:', err);
     }
@@ -1079,18 +955,10 @@ io.on('connection', async socket => {
         const targetUser = await pool.query('SELECT family_code FROM users WHERE id = $1', [toUserId]);
         if (targetUser.rows.length > 0 && targetUser.rows[0].family_code === socket.familyCode) {
           const targetSocketId = activeUsers.get(String(toUserId));
-          if (targetSocketId) {
-            io.to(targetSocketId).emit('end_call', {
-              callId,
-              fromUserId: socket.userId
-            });
-          }
+          if (targetSocketId) io.to(targetSocketId).emit('end_call', { callId, fromUserId: socket.userId });
         }
       } else if (socket.familyCode) {
-        socket.to(socket.familyCode).emit('end_call', {
-          callId,
-          fromUserId: socket.userId
-        });
+        socket.to(socket.familyCode).emit('end_call', { callId, fromUserId: socket.userId });
       }
     } catch (err) {
       console.error('Error end_call signaling:', err);
@@ -1100,9 +968,7 @@ io.on('connection', async socket => {
   socket.on('disconnect', () => {
     if (activeUsers.get(socket.userId) === socket.id) {
       activeUsers.delete(socket.userId);
-      if (socket.familyCode) {
-        io.to(socket.familyCode).emit('online_users_update', Array.from(activeUsers.keys()));
-      }
+      if (socket.familyCode) io.to(socket.familyCode).emit('online_users_update', Array.from(activeUsers.keys()));
     }
   });
 });
