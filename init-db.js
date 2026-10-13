@@ -70,8 +70,11 @@ async function setupDatabase() {
         image_url TEXT,
         sticker_url TEXT,
         audio_url TEXT,
+        file_url TEXT,
         reply_to_id INT REFERENCES messages(id) ON DELETE SET NULL,
         is_deleted BOOLEAN NOT NULL DEFAULT FALSE,
+        is_read BOOLEAN DEFAULT FALSE,
+        read_at TIMESTAMPTZ,
         created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
         client_time VARCHAR(50)
       );
@@ -94,6 +97,9 @@ async function setupDatabase() {
     await client.query('ALTER TABLE users ADD COLUMN IF NOT EXISTS reset_token_expiry BIGINT');
     await client.query('ALTER TABLE messages ADD COLUMN IF NOT EXISTS family_code VARCHAR(50)');
     await client.query('ALTER TABLE messages ADD COLUMN IF NOT EXISTS reply_to_id INT');
+    await client.query('ALTER TABLE messages ADD COLUMN IF NOT EXISTS file_url TEXT');
+    await client.query('ALTER TABLE messages ADD COLUMN IF NOT EXISTS is_read BOOLEAN DEFAULT FALSE');
+    await client.query('ALTER TABLE messages ADD COLUMN IF NOT EXISTS read_at TIMESTAMPTZ');
     await client.query('ALTER TABLE agendas ADD COLUMN IF NOT EXISTS family_code VARCHAR(50)');
 
     // 3. Pembuatan Indeks untuk Performa Kueri
