@@ -123,10 +123,23 @@ app.use(
     contentSecurityPolicy: {
       directives: {
         defaultSrc: ["'self'"],
-        scriptSrc: ["'self'", "'unsafe-inline'", "https://jsdelivr.net", "https://cloudflare.com"],
-        styleSrc: ["'self'", "'unsafe-inline'", "https://cloudflare.com"],
+        scriptSrc: [
+          "'self'",
+          "'unsafe-inline'",
+          "https://jsdelivr.net",
+          "https://cloudflare.com"
+        ],
+        styleSrc: [
+          "'self'",
+          "'unsafe-inline'",
+          "https://cloudflare.com"
+        ],
         imgSrc: ["'self'", "data:", "blob:", "https:"],
-        fontSrc: ["'self'", "https://cloudflare.com", "data:"],
+        fontSrc: [
+          "'self'",
+          "https://cloudflare.com",
+          "data:"
+        ],
       },
     },
   })
@@ -168,11 +181,14 @@ const mediaUpload = multer({
   limits: { fileSize: MAX_FILE_SIZE, files: 1 },
   fileFilter: (req, file, callback) => {
     const isImage = file.mimetype.startsWith('image/');
-    const isAudio = file.mimetype.startsWith('audio/') ||
+    const isAudio =
+      file.mimetype.startsWith('audio/') ||
       file.mimetype === 'video/webm' ||
       file.mimetype === 'application/octet-stream';
-    if (!isImage && !isAudio) {
-      return callback(new Error('Hanya file gambar atau audio yang diizinkan.'));
+    const isPdf = file.mimetype === 'application/pdf';
+
+    if (!isImage && !isAudio && !isPdf) {
+      return callback(new Error('Hanya file gambar, audio atau PDF yang diizinkan.'));
     }
     callback(null, true);
   }
@@ -180,8 +196,13 @@ const mediaUpload = multer({
 
 function escapeHTML(value) {
   if (typeof value !== 'string') return value;
+  
   return value.replace(/[&<>'"]/g, character => ({
-    '&': '&amp;', '<': '&lt;', '>': '&gt;', "'": '&#39;', '"': '&quot;'
+    '&': '&amp;',
+    '<': '&lt;',
+    '>': '&gt;',
+    "'": '&#39;',
+    '"': '&quot;'
   })[character]);
 }
 
@@ -197,8 +218,12 @@ function isValidEmail(email) {
   return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
 }
 
+const PUBLIC_BASE_URL =
+  process.env.PUBLIC_BASE_URL ||
+  'https://kitachat-app-production.up.railway.app';
+
 function getUploadUrl(filename) {
-  return `/uploads/${filename}`;
+  return `${PUBLIC_BASE_URL}/uploads/${filename}`;
 }
 
 function deleteUploadedFile(file) {
@@ -254,6 +279,7 @@ async function initDB() {
         user_id INT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
         message TEXT,
         image_url TEXT,
+        file_url TEXT,
         sticker_url TEXT,
         audio_url TEXT,
         reply_to_id INT REFERENCES messages(id) ON DELETE SET NULL,
@@ -278,6 +304,7 @@ async function initDB() {
     await client.query('ALTER TABLE users ADD COLUMN IF NOT EXISTS reset_token VARCHAR(255)');
     await client.query('ALTER TABLE users ADD COLUMN IF NOT EXISTS reset_token_expiry BIGINT');
     await client.query('ALTER TABLE messages ADD COLUMN IF NOT EXISTS family_code VARCHAR(50)');
+    await client.query('ALTER TABLE messages ADD COLUMN IF NOT EXISTS file_url TEXT');
     await client.query('ALTER TABLE messages ADD COLUMN IF NOT EXISTS reply_to_id INT');
     await client.query('ALTER TABLE agendas ADD COLUMN IF NOT EXISTS family_code VARCHAR(50)');
 
@@ -607,7 +634,6 @@ app.put('/api/update-profile', checkSingleDevice, async (req, res) => {
   }
 });
 
-// Endpoint REST mengambil riwayat pesan untuk Retrofit Android
 app.get('/api/messages', checkSingleDevice, async (req, res) => {
   try {
     const historyQuery = await pool.query(`
@@ -618,6 +644,7 @@ app.get('/api/messages', checkSingleDevice, async (req, res) => {
         users.name AS sender, 
         messages.message AS text, 
         messages.image_url, 
+        messages.file_url,
         messages.audio_url, 
         messages.reply_to_id, 
         messages.is_deleted, 
@@ -636,8 +663,16 @@ app.get('/api/messages', checkSingleDevice, async (req, res) => {
       user_id: row.user_id,
       sender: row.sender,
       text: row.is_deleted ? "Pesan ini telah dihapus" : row.text,
-      message_type: row.image_url ? "image" : (row.audio_url ? "audio" : "text"),
+      message_type:
+        row.image_url
+          ? "image"
+          : row.file_url
+            ? "pdf"
+            : row.audio_url
+              ? "audio"
+              : "text",
       image_url: row.image_url,
+      file_url: row.file_url,
       audio_url: row.audio_url,
       reply_to_id: row.reply_to_id ? String(row.reply_to_id) : null,
       is_deleted: row.is_deleted,
@@ -660,28 +695,36 @@ app.post('/api/send-message', checkSingleDevice, mediaUpload.single('media'), as
 
     let imageUrl = null;
     let audioUrl = null;
+    let fileUrl = null;
 
     if (req.file) {
-      const isAudioFile = req.file.mimetype.startsWith('audio/') ||
-        req.file.mimetype === 'video/webm' ||
-        /\.(webm|m4a|mp3|wav|ogg|aac)$/i.test(req.file.originalname);
-      if (isAudioFile) audioUrl = getUploadUrl(req.file.filename);
-      else imageUrl = getUploadUrl(req.file.filename);
+      const mimeType = req.file.mimetype;
+
+      if (mimeType === 'application/pdf') {
+        fileUrl = getUploadUrl(req.file.filename);
+      } else if (
+        mimeType.startsWith('audio/') ||
+        mimeType === 'video/webm'
+      ) {
+        audioUrl = getUploadUrl(req.file.filename);
+      } else {
+        imageUrl = getUploadUrl(req.file.filename);
+      }
     }
 
     const stickerUrl = sticker_url ? String(sticker_url).trim() : null;
     const replyToId = reply_to_id ? Number.parseInt(reply_to_id, 10) : null;
 
-    if (!message && !imageUrl && !audioUrl && !stickerUrl) {
+    if (!message && !imageUrl && !audioUrl && !fileUrl && !stickerUrl) {
       deleteUploadedFile(req.file);
       return res.status(400).json({ error: 'Pesan tidak boleh kosong.' });
     }
 
     const result = await pool.query(
-      `INSERT INTO messages (family_code, user_id, message, image_url, sticker_url, audio_url, reply_to_id, client_time)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
-       RETURNING id, family_code, user_id, message, image_url, sticker_url, audio_url, reply_to_id, is_deleted, created_at, client_time`,
-      [familyCode, userId, message, imageUrl, stickerUrl, audioUrl, replyToId, client_time || null]
+      `INSERT INTO messages (family_code, user_id, message, image_url, file_url, sticker_url, audio_url, reply_to_id, client_time)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+       RETURNING id, family_code, user_id, message, image_url, file_url, sticker_url, audio_url, reply_to_id, is_deleted, created_at, client_time`,
+      [familyCode, userId, message, imageUrl, fileUrl, stickerUrl, audioUrl, replyToId, client_time || null]
     );
 
     const savedMessage = result.rows[0];
@@ -701,6 +744,7 @@ app.post('/api/send-message', checkSingleDevice, mediaUpload.single('media'), as
       name: userResult.rows[0]?.name || 'Keluarga',
       message: savedMessage.message,
       image_url: savedMessage.image_url,
+      file_url: savedMessage.file_url,
       audio_url: savedMessage.audio_url,
       reply_to_id: savedMessage.reply_to_id,
       reply_text: replyText,
@@ -749,7 +793,7 @@ app.post('/api/send-message', checkSingleDevice, mediaUpload.single('media'), as
 app.delete('/api/messages/:id', checkSingleDevice, async (req, res) => {
   try {
     const result = await pool.query(
-      `UPDATE messages SET is_deleted = TRUE, message = 'Pesan telah dihapus', image_url = NULL, sticker_url = NULL, audio_url = NULL WHERE id = $1 AND user_id = $2 RETURNING id`,
+      `UPDATE messages SET is_deleted = TRUE, message = 'Pesan telah dihapus', image_url = NULL, file_url = NULL, sticker_url = NULL, audio_url = NULL WHERE id = $1 AND user_id = $2 RETURNING id`,
       [Number(req.params.id), req.userId]
     );
     if (result.rowCount === 0) return res.status(403).json({ error: 'Tidak memiliki hak.' });
@@ -883,6 +927,7 @@ io.on('connection', async socket => {
           users.name, 
           messages.message, 
           messages.image_url, 
+          messages.file_url,
           messages.audio_url, 
           messages.reply_to_id, 
           messages.created_at, 
@@ -900,6 +945,7 @@ io.on('connection', async socket => {
         name: row.name,
         message: row.message,
         image_url: row.image_url,
+        file_url: row.file_url,
         audio_url: row.audio_url,
         reply_to_id: row.reply_to_id,
         time: row.client_time || new Date(row.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
