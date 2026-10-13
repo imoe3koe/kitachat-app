@@ -102,11 +102,13 @@ async function setupDatabase() {
     await client.query('ALTER TABLE messages ADD COLUMN IF NOT EXISTS read_at TIMESTAMPTZ');
     await client.query('ALTER TABLE agendas ADD COLUMN IF NOT EXISTS family_code VARCHAR(50)');
 
-    // 3. Pembuatan Indeks untuk Performa Kueri
+    // 3. Pembuatan Indeks untuk Performa Kueri (Termasuk Indeks Read Receipt)
     await client.query('CREATE INDEX IF NOT EXISTS idx_messages_created_at ON messages(created_at)');
     await client.query('CREATE INDEX IF NOT EXISTS idx_messages_user_id ON messages(user_id)');
     await client.query('CREATE INDEX IF NOT EXISTS idx_messages_family_code ON messages(family_code)');
     await client.query('CREATE INDEX IF NOT EXISTS idx_messages_reply_to_id ON messages(reply_to_id)');
+    await client.query('CREATE INDEX IF NOT EXISTS idx_messages_is_read ON messages(is_read)'); // <-- REVISI OPTIMAL: Indeks untuk status read
+    await client.query('CREATE INDEX IF NOT EXISTS idx_messages_read_at ON messages(read_at)'); // <-- REVISI OPTIMAL: Indeks untuk timestamp read
     await client.query('CREATE INDEX IF NOT EXISTS idx_albums_created_at ON albums(created_at)');
     await client.query('CREATE INDEX IF NOT EXISTS idx_albums_user_id ON albums(user_id)');
     await client.query('CREATE INDEX IF NOT EXISTS idx_users_session_token ON users(session_token)');

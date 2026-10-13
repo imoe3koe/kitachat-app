@@ -194,6 +194,7 @@ const mediaUpload = multer({
   }
 });
 
+// Patch 1 - Perbaikan escapeHTML()
 function escapeHTML(value) {
   if (typeof value !== 'string') return value;
   
@@ -222,8 +223,25 @@ const PUBLIC_BASE_URL =
   process.env.PUBLIC_BASE_URL ||
   'https://kitachat-app-production.up.railway.app';
 
+// Patch 2 - Tambahkan Helper URL Upload & extractLocalUploadPath
 function getUploadUrl(filename) {
   return `${PUBLIC_BASE_URL}/uploads/${filename}`;
+}
+
+function extractLocalUploadPath(fileUrl) {
+  if (!fileUrl) return null;
+  try {
+    const parsed = new URL(fileUrl);
+    return path.join(
+      uploadDir,
+      parsed.pathname.replace(/^\/uploads\//, '')
+    );
+  } catch {
+    return path.join(
+      uploadDir,
+      fileUrl.replace(/^\/uploads\//, '')
+    );
+  }
 }
 
 function deleteUploadedFile(file) {
@@ -284,6 +302,8 @@ async function initDB() {
         audio_url TEXT,
         reply_to_id INT REFERENCES messages(id) ON DELETE SET NULL,
         is_deleted BOOLEAN NOT NULL DEFAULT FALSE,
+        is_read BOOLEAN DEFAULT FALSE,
+        read_at TIMESTAMPTZ,
         created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
         client_time VARCHAR(50)
       );
@@ -306,6 +326,8 @@ async function initDB() {
     await client.query('ALTER TABLE messages ADD COLUMN IF NOT EXISTS family_code VARCHAR(50)');
     await client.query('ALTER TABLE messages ADD COLUMN IF NOT EXISTS file_url TEXT');
     await client.query('ALTER TABLE messages ADD COLUMN IF NOT EXISTS reply_to_id INT');
+    await client.query('ALTER TABLE messages ADD COLUMN IF NOT EXISTS is_read BOOLEAN DEFAULT FALSE');
+    await client.query('ALTER TABLE messages ADD COLUMN IF NOT EXISTS read_at TIMESTAMPTZ');
     await client.query('ALTER TABLE agendas ADD COLUMN IF NOT EXISTS family_code VARCHAR(50)');
 
     await client.query('CREATE INDEX IF NOT EXISTS idx_messages_created_at ON messages(created_at)');
@@ -539,13 +561,18 @@ app.post('/api/albums', checkSingleDevice, imageUpload.single('image'), async (r
   }
 });
 
+// Patch 3 - Perbaiki Hapus Foto Album dengan extractLocalUploadPath
 app.delete('/api/albums/:id', checkSingleDevice, async (req, res) => {
   const albumId = Number(req.params.id);
   const userId = req.userId;
   try {
     const result = await pool.query('DELETE FROM albums WHERE id = $1 AND user_id = $2 RETURNING image_url', [albumId, userId]);
     if (result.rowCount === 0) return res.status(403).json({ error: 'Anda tidak memiliki izin menghapus foto ini.' });
-    if (result.rows[0].image_url) deleteUploadedFile({ path: path.join(__dirname, result.rows[0].image_url.replace(/^\//, '')) });
+    if (result.rows[0].image_url) {
+      deleteUploadedFile({
+        path: extractLocalUploadPath(result.rows[0].image_url)
+      });
+    }
     return res.json({ message: 'Foto berhasil dihapus.' });
   } catch (error) {
     console.error('Error menghapus album:', error);
@@ -596,6 +623,7 @@ app.get('/api/family-birthdays', checkSingleDevice, async (req, res) => {
   }
 });
 
+// Patch 4 - Perbaiki Hapus Foto Profil dengan extractLocalUploadPath
 app.post('/api/update-photo', checkSingleDevice, imageUpload.single('image'), async (req, res) => {
   const userId = req.userId;
   try {
@@ -608,7 +636,9 @@ app.post('/api/update-photo', checkSingleDevice, imageUpload.single('image'), as
       [photoUrl, userId]
     );
     if (oldUser.rows[0]?.photo_url) {
-      deleteUploadedFile({ path: path.join(__dirname, oldUser.rows[0].photo_url.replace(/^\//, '')) });
+      deleteUploadedFile({
+        path: extractLocalUploadPath(oldUser.rows[0].photo_url)
+      });
     }
     return res.json({ message: 'Foto profil diperbarui.', user: result.rows[0] });
   } catch (error) {
@@ -648,6 +678,7 @@ app.get('/api/messages', checkSingleDevice, async (req, res) => {
         messages.audio_url, 
         messages.reply_to_id, 
         messages.is_deleted, 
+        messages.is_read,
         messages.created_at AS timestamp, 
         messages.client_time 
       FROM messages 
@@ -676,6 +707,7 @@ app.get('/api/messages', checkSingleDevice, async (req, res) => {
       audio_url: row.audio_url,
       reply_to_id: row.reply_to_id ? String(row.reply_to_id) : null,
       is_deleted: row.is_deleted,
+      is_read: row.is_read,
       timestamp: row.client_time || new Date(row.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
     }));
     return res.json(formattedMessages);
@@ -723,7 +755,7 @@ app.post('/api/send-message', checkSingleDevice, mediaUpload.single('media'), as
     const result = await pool.query(
       `INSERT INTO messages (family_code, user_id, message, image_url, file_url, sticker_url, audio_url, reply_to_id, client_time)
        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
-       RETURNING id, family_code, user_id, message, image_url, file_url, sticker_url, audio_url, reply_to_id, is_deleted, created_at, client_time`,
+       RETURNING id, family_code, user_id, message, image_url, file_url, sticker_url, audio_url, reply_to_id, is_deleted, is_read, created_at, client_time`,
       [familyCode, userId, message, imageUrl, fileUrl, stickerUrl, audioUrl, replyToId, client_time || null]
     );
 
@@ -738,16 +770,26 @@ app.post('/api/send-message', checkSingleDevice, mediaUpload.single('media'), as
       }
     }
 
+    // Patch 6 - Tambahkan message_type pada Realtime Message
     const messagePayload = {
       id: savedMessage.id,
       user_id: savedMessage.user_id,
       name: userResult.rows[0]?.name || 'Keluarga',
       message: savedMessage.message,
+      message_type:
+        savedMessage.image_url
+          ? 'image'
+          : savedMessage.file_url
+            ? 'pdf'
+            : savedMessage.audio_url
+              ? 'audio'
+              : 'text',
       image_url: savedMessage.image_url,
       file_url: savedMessage.file_url,
       audio_url: savedMessage.audio_url,
       reply_to_id: savedMessage.reply_to_id,
       reply_text: replyText,
+      is_read: savedMessage.is_read,
       time: savedMessage.client_time || new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
     };
 
@@ -930,6 +972,7 @@ io.on('connection', async socket => {
           messages.file_url,
           messages.audio_url, 
           messages.reply_to_id, 
+          messages.is_read,
           messages.created_at, 
           messages.client_time 
         FROM messages 
@@ -939,15 +982,25 @@ io.on('connection', async socket => {
         LIMIT 100
       `, [socket.familyCode]);
 
+      // Patch 5 - Tambahkan message_type pada Socket History
       const formattedHistory = historyQuery.rows.map(row => ({
         id: row.id,
         user_id: row.user_id,
         name: row.name,
         message: row.message,
+        message_type:
+          row.image_url
+            ? 'image'
+            : row.file_url
+              ? 'pdf'
+              : row.audio_url
+                ? 'audio'
+                : 'text',
         image_url: row.image_url,
         file_url: row.file_url,
         audio_url: row.audio_url,
         reply_to_id: row.reply_to_id,
+        is_read: row.is_read,
         time: row.client_time || new Date(row.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
       }));
       socket.emit('chat_history', formattedHistory);
@@ -957,6 +1010,62 @@ io.on('connection', async socket => {
   }
 
   io.to(socket.familyCode).emit('online_users_update', Array.from(activeUsers.keys()));
+
+  // Patch 7 - Implementasi Aman Event message_read (Read Receipt)
+  socket.on('message_read', async data => {
+    try {
+      const messageId = Number(data.messageId);
+      if (!messageId) return;
+
+      const msg = await pool.query(
+        `
+        SELECT
+          id,
+          user_id,
+          family_code,
+          is_read
+        FROM messages
+        WHERE id = $1
+      `,
+        [messageId]
+      );
+
+      if (msg.rows.length === 0) return;
+
+      const message = msg.rows[0];
+
+      // Verifikasi: hanya dalam keluarga yang sama
+      if (message.family_code !== socket.familyCode) {
+        return;
+      }
+
+      // Verifikasi: pengirim sendiri tidak boleh menandai dibaca
+      if (Number(message.user_id) === Number(socket.userId)) {
+        return;
+      }
+
+      if (message.is_read === true) {
+        return;
+      }
+
+      await pool.query(
+        `
+        UPDATE messages
+        SET
+          is_read = TRUE,
+          read_at = NOW()
+        WHERE id = $1
+      `,
+        [messageId]
+      );
+
+      io.to(socket.familyCode).emit('message_read_update', {
+        id: String(messageId)
+      });
+    } catch (err) {
+      console.error('message_read', err);
+    }
+  });
 
   socket.on('call_user', async data => {
     const { toUserId, callId, offer, callerName } = data;
@@ -1011,7 +1120,6 @@ io.on('connection', async socket => {
     }
   });
 
-  // REVISI: Penambahan Socket Event untuk Typing Indicator tepat sebelum disconnect[cite: 10]
   socket.on('typing', () => {
     if (!socket.familyCode) return;
     socket.to(socket.familyCode).emit('user_typing', {
