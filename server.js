@@ -185,16 +185,24 @@ const mediaUpload = multer({
       file.mimetype.startsWith('audio/') ||
       file.mimetype === 'video/webm' ||
       file.mimetype === 'application/octet-stream';
-    const isPdf = file.mimetype === 'application/pdf';
+      
+    // Sprint 1.7.4.1 - Ekspansi Dukungan Dokumen Office & File Pendukung
+    const isDocument = [
+      'application/pdf',
+      'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+      'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+      'application/vnd.openxmlformats-officedocument.presentationml.presentation',
+      'text/plain',
+      'application/zip'
+    ].includes(file.mimetype);
 
-    if (!isImage && !isAudio && !isPdf) {
-      return callback(new Error('Hanya file gambar, audio atau PDF yang diizinkan.'));
+    if (!isImage && !isAudio && !isDocument) {
+      return callback(new Error('Hanya file gambar, audio, atau dokumen yang diizinkan.'));
     }
     callback(null, true);
   }
 });
 
-// Patch 1 - Perbaikan escapeHTML()
 function escapeHTML(value) {
   if (typeof value !== 'string') return value;
   
@@ -223,7 +231,6 @@ const PUBLIC_BASE_URL =
   process.env.PUBLIC_BASE_URL ||
   'https://kitachat-app-production.up.railway.app';
 
-// Patch 2 - Tambahkan Helper URL Upload & extractLocalUploadPath
 function getUploadUrl(filename) {
   return `${PUBLIC_BASE_URL}/uploads/${filename}`;
 }
@@ -561,7 +568,6 @@ app.post('/api/albums', checkSingleDevice, imageUpload.single('image'), async (r
   }
 });
 
-// Patch 3 - Perbaiki Hapus Foto Album dengan extractLocalUploadPath
 app.delete('/api/albums/:id', checkSingleDevice, async (req, res) => {
   const albumId = Number(req.params.id);
   const userId = req.userId;
@@ -623,7 +629,6 @@ app.get('/api/family-birthdays', checkSingleDevice, async (req, res) => {
   }
 });
 
-// Patch 4 - Perbaiki Hapus Foto Profil dengan extractLocalUploadPath
 app.post('/api/update-photo', checkSingleDevice, imageUpload.single('image'), async (req, res) => {
   const userId = req.userId;
   try {
@@ -732,7 +737,16 @@ app.post('/api/send-message', checkSingleDevice, mediaUpload.single('media'), as
     if (req.file) {
       const mimeType = req.file.mimetype;
 
-      if (mimeType === 'application/pdf') {
+      const isDocumentMime = [
+        'application/pdf',
+        'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+        'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+        'application/vnd.openxmlformats-officedocument.presentationml.presentation',
+        'text/plain',
+        'application/zip'
+      ].includes(mimeType);
+
+      if (isDocumentMime) {
         fileUrl = getUploadUrl(req.file.filename);
       } else if (
         mimeType.startsWith('audio/') ||
@@ -770,7 +784,6 @@ app.post('/api/send-message', checkSingleDevice, mediaUpload.single('media'), as
       }
     }
 
-    // Patch 6 - Tambahkan message_type pada Realtime Message
     const messagePayload = {
       id: savedMessage.id,
       user_id: savedMessage.user_id,
@@ -982,7 +995,6 @@ io.on('connection', async socket => {
         LIMIT 100
       `, [socket.familyCode]);
 
-      // Patch 5 - Tambahkan message_type pada Socket History
       const formattedHistory = historyQuery.rows.map(row => ({
         id: row.id,
         user_id: row.user_id,
@@ -1011,7 +1023,6 @@ io.on('connection', async socket => {
 
   io.to(socket.familyCode).emit('online_users_update', Array.from(activeUsers.keys()));
 
-  // Patch 7 - Implementasi Aman Event message_read (Read Receipt)
   socket.on('message_read', async data => {
     try {
       const messageId = Number(data.messageId);
@@ -1034,12 +1045,10 @@ io.on('connection', async socket => {
 
       const message = msg.rows[0];
 
-      // Verifikasi: hanya dalam keluarga yang sama
       if (message.family_code !== socket.familyCode) {
         return;
       }
 
-      // Verifikasi: pengirim sendiri tidak boleh menandai dibaca
       if (Number(message.user_id) === Number(socket.userId)) {
         return;
       }
