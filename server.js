@@ -186,7 +186,6 @@ const mediaUpload = multer({
       file.mimetype === 'video/webm' ||
       file.mimetype === 'application/octet-stream';
       
-    // Sprint 1.7.4.1 - Ekspansi Dukungan Dokumen Office & File Pendukung
     const isDocument = [
       'application/pdf',
       'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
@@ -806,6 +805,13 @@ app.post('/api/send-message', checkSingleDevice, mediaUpload.single('media'), as
       time: savedMessage.client_time || new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
     };
 
+    console.log(
+      '[REALTIME]',
+      familyCode,
+      savedMessage.id,
+      savedMessage.user_id
+    );
+
     io.to(familyCode).emit('receive_message', messagePayload);
 
     try {
@@ -994,6 +1000,12 @@ io.on('connection', async socket => {
         ORDER BY messages.created_at ASC 
         LIMIT 100
       `, [socket.familyCode]);
+
+      console.log(
+        '[SOCKET JOIN]',
+        socket.userId,
+        socket.familyCode
+      );
 
       const formattedHistory = historyQuery.rows.map(row => ({
         id: row.id,
